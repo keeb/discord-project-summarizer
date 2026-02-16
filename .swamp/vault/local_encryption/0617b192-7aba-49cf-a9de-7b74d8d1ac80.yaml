@@ -1,0 +1,7 @@
+id: 0617b192-7aba-49cf-a9de-7b74d8d1ac80
+name: secrets
+type: local_encryption
+config:
+  auto_generate: true
+  base_dir: /home/keeb/git/discord-project-summarizer
+createdAt: '2026-02-14T22:02:26.520Z'

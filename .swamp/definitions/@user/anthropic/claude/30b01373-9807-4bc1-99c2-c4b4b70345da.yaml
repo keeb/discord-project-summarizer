@@ -1,0 +1,44 @@
+type: '@user/anthropic/claude'
+typeVersion: 2026.02.14.1
+id: 30b01373-9807-4bc1-99c2-c4b4b70345da
+name: daily_summary_generator
+version: 1
+tags: {}
+globalArguments:
+  apiKey: ${{ vault.get("secrets", "ANTHROPIC_API_KEY") }}
+  model: claude-sonnet-4-20250514
+  systemPrompt: |
+    You generate daily project summaries in a strict markdown template. You never deviate from the template structure. You never add emojis. You write in plain, direct language.
+  maxTokens: 1024
+methods:
+  generate:
+    arguments:
+      prompt: |
+        Today's date is ${{ model.daily_pr_fetch_gh.resource.result.result.attributes.fetchedAt }}.
+
+        Here are the pull requests merged in the last 24 hours:
+
+        ${{ model.daily_pr_fetch_gh.resource.result.result.attributes.pullRequests }}
+
+        Generate a markdown summary using EXACTLY this template. Do not add or remove sections. Do not add emojis. Do not wrap in a code block.
+
+        ---BEGIN TEMPLATE---
+        # Daily Summary — {date in Mon DD, YYYY format}
+
+        ## Highlights
+
+        {2-4 bullet points summarizing the key themes across all PRs. Each bullet is one sentence. Do not mention PR numbers here.}
+
+        ## Changes
+
+        {One bullet per PR, in this exact format:}
+        - **{PR title}** ([#{number}]({url})) — {one-sentence description of what changed and why}
+
+        ---END TEMPLATE---
+
+        RULES:
+        - The Highlights section has 2-4 bullets max, summarizing themes (e.g. "security", "performance"), not individual PRs.
+        - The Changes section has exactly one bullet per PR, in merge order (newest first).
+        - Each Changes bullet starts with the PR title in bold, then the link, then a dash and one sentence.
+        - Keep the total output under 1800 characters.
+        - If there are no PRs, output only: "# Daily Summary — {date}\n\nNo changes in the last 24 hours."

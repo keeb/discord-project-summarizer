@@ -1,0 +1,12 @@
+type: '@user/github/gh-pr-list'
+typeVersion: 2026.02.14.1
+id: 3ed5c45c-3790-4b09-bfdd-39201282e9bc
+name: daily_pr_fetch_gh
+version: 1
+tags: {}
+globalArguments:
+  owner: systeminit
+  repo: swamp
+  state: closed
+  limit: 100
+methods: {}
