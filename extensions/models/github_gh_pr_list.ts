@@ -77,7 +77,7 @@ export const model = {
             url: pr.html_url,
             mergedAt: pr.merged_at ?? null,
             author: pr.user?.login ?? "unknown",
-            body: pr.body ?? null,
+            body: pr.body ? pr.body.replace(/\$\{\{.*?\}\}/g, "") : null,
           }));
 
         const handle = await context.writeResource("result", "result", {

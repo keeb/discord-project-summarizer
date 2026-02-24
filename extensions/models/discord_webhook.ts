@@ -32,8 +32,14 @@ export const model = {
       execute: async (args, context) => {
         const { webhookUrl } = context.globalArgs;
 
+        // Discord content limit is 2000 characters
+        let content = args.content;
+        if (content.length > 2000) {
+          content = content.slice(0, 1997) + "...";
+        }
+
         const body = {
-          content: args.content,
+          content,
           ...(args.username ? { username: args.username } : {}),
         };
 
