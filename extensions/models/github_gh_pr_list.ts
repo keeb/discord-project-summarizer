@@ -25,7 +25,7 @@ const ResultSchema = z.object({
 
 export const model = {
   type: "@user/github/gh-pr-list",
-  version: "2026.02.14.2",
+  version: "2026.02.14.4",
   globalArguments: GlobalArgsSchema,
   resources: {
     result: {
@@ -37,46 +37,49 @@ export const model = {
   },
   methods: {
     list: {
-      description: "List PRs from GitHub using the public API",
+      description: "List PRs from GitHub using the gh CLI",
       arguments: z.object({
         since: z.string().datetime().optional(),
+        sinceDays: z.number().int().positive().optional(),
       }),
       execute: async (args, context) => {
         const { owner, repo, state, limit } = context.globalArgs;
 
-        const apiState = state === "merged" ? "closed" : state;
-        const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=${apiState}&per_page=${limit}&sort=updated&direction=desc`;
-
-        const response = await fetch(url, {
-          headers: {
-            Accept: "application/vnd.github+json",
-          },
+        const cmd = new Deno.Command("gh", {
+          args: [
+            "pr", "list",
+            "--repo", `${owner}/${repo}`,
+            "--state", state,
+            "--limit", String(limit),
+            "--json", "number,title,url,mergedAt,author,body,closedAt",
+          ],
+          stdout: "piped",
+          stderr: "piped",
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `GitHub API error (${response.status}): ${errorText}`,
-          );
+        const output = await cmd.output();
+        if (!output.success) {
+          const stderr = new TextDecoder().decode(output.stderr);
+          throw new Error(`gh CLI error: ${stderr}`);
         }
 
-        const prsRaw = await response.json();
+        const prsRaw = JSON.parse(new TextDecoder().decode(output.stdout));
         const sinceDate = args.since
           ? new Date(args.since)
-          : new Date(Date.now() - 24 * 60 * 60 * 1000);
+          : new Date(Date.now() - (args.sinceDays || 1) * 24 * 60 * 60 * 1000);
 
         const pullRequests = prsRaw
           .filter((pr) => {
-            if (state === "merged" && !pr.merged_at) return false;
-            const closedAt = pr.closed_at ? new Date(pr.closed_at) : null;
+            if (state === "merged" && !pr.mergedAt) return false;
+            const closedAt = pr.closedAt ? new Date(pr.closedAt) : null;
             return closedAt && closedAt >= sinceDate;
           })
           .map((pr) => ({
             number: pr.number,
             title: pr.title,
-            url: pr.html_url,
-            mergedAt: pr.merged_at ?? null,
-            author: pr.user?.login ?? "unknown",
+            url: pr.url,
+            mergedAt: pr.mergedAt ?? null,
+            author: pr.author?.login ?? "unknown",
             body: pr.body ? pr.body.replace(/\$\{\{.*?\}\}/g, "") : null,
           }));
 
